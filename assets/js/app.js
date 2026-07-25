@@ -1,5 +1,5 @@
 if (window.location.hostname === "andressanchez12323.github.io") {
-    const target = "https://andres-sanchez-portfolio.vercel.app" + window.location.pathname + window.location.search + window.location.hash;
+    const target = "https://portafolio-personal-edwin-sanchez.vercel.app" + window.location.pathname + window.location.search + window.location.hash;
     window.location.replace(target);
 }
 
@@ -26,6 +26,7 @@ const TRANSLATIONS = {
         nav_projects: "Proyectos",
         nav_experience: "Experiencia",
         nav_skills: "Skills",
+        nav_github: "GitHub",
         nav_certificates: "Certificados",
         nav_contact: "Contacto",
         hero_subtitle: "enfocado en productos limpios y performantes. Creo soluciones eficientes con c\u00f3digo de calidad.",
@@ -73,6 +74,8 @@ const TRANSLATIONS = {
         no_language: "Sin lenguaje",
         updated: "Actualizado",
         view_repo: "Ver repo",
+        just_now: "ahora",
+        yesterday: "ayer",
         profile_error: "No se pudo cargar el perfil de GitHub.",
         repos_error: "No se pudieron cargar los repositorios.",
         no_projects: "Aun no hay proyectos publicos para mostrar.",
@@ -97,6 +100,7 @@ const TRANSLATIONS = {
         nav_projects: "Projects",
         nav_experience: "Experience",
         nav_skills: "Skills",
+        nav_github: "GitHub",
         nav_certificates: "Certificates",
         nav_contact: "Contact",
         hero_subtitle: "focused on clean, performant products. I create efficient solutions with quality code.",
@@ -144,6 +148,8 @@ const TRANSLATIONS = {
         no_language: "No language",
         updated: "Updated",
         view_repo: "View repo",
+        just_now: "just now",
+        yesterday: "yesterday",
         profile_error: "Could not load GitHub profile.",
         repos_error: "Could not load repositories.",
         no_projects: "No public projects to show yet.",
@@ -413,9 +419,19 @@ function initCertModal() {
     const overlay = document.getElementById("certModal");
     if (!overlay) return;
 
+    // Mobile browsers do not reliably render PDFs inside an <iframe>, so on
+    // touch/small-screen devices we open the PDF in a new tab (native viewer).
+    const isMobileViewer = () => window.matchMedia("(max-width: 768px)").matches
+        || /Android|iPhone|iPad|iPod|Opera Mini|IEMobile|Mobile/i.test(navigator.userAgent);
+
     const open = (url) => {
         const safe = String(url || "");
         if (!safe.startsWith("assets/certificates/")) return;
+        const absolute = new URL(safe, window.location.href).href;
+        if (isMobileViewer()) {
+            window.open(absolute, "_blank", "noopener");
+            return;
+        }
         const iframe = document.getElementById("certModalIframe");
         if (iframe) iframe.src = safe;
         overlay.classList.add("open");
@@ -462,7 +478,7 @@ async function renderGitHub() {
         if (!cachedProfile || !cachedRepos) {
             const [profileRes, reposRes] = await Promise.all([
                 fetch(`https://api.github.com/users/${username}`),
-                fetch(`https://api.github.com/users/${username}/repos?per_page=100&sort=updated`),
+                fetch(`https://api.github.com/users/${username}/repos?per_page=100&sort=pushed`),
             ]);
             if (!profileRes.ok || !reposRes.ok) throw new Error("GitHub API error");
             cachedProfile = await profileRes.json();
@@ -826,19 +842,21 @@ function renderWorkingOn(repos) {
     const grid = document.getElementById("working-grid");
     if (!grid) return;
     if (!Array.isArray(repos) || !repos.length) { grid.innerHTML = ""; return; }
-    const items = repos.filter((r) => !r.fork)
-        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+    const lastActivity = (r) => new Date(r.pushed_at || r.updated_at).getTime();
+    const items = repos.filter((r) => !r.fork && !EXCLUDED_PROJECTS.includes(r.name))
+        .sort((a, b) => lastActivity(b) - lastActivity(a))
         .slice(0, 4);
     grid.innerHTML = items.map((r, i) => {
         const langColor = getLangColor(r.language);
         const ago = (() => {
-            const diff = Date.now() - new Date(r.updated_at).getTime();
+            const diff = Date.now() - lastActivity(r);
             const mins = Math.floor(diff / 60000);
+            if (mins < 1) return t("just_now");
             if (mins < 60) return mins + "m";
             const hrs = Math.floor(mins / 60);
             if (hrs < 24) return hrs + "h";
             const d = Math.floor(hrs / 24);
-            if (d === 1) return "yesterday";
+            if (d === 1) return t("yesterday");
             return d + "d";
         })();
         const firstLine = (r.description || t("no_description")).split("\n")[0];
@@ -874,14 +892,23 @@ function renderWorkingOn(repos) {
 // ============================
 // Projects
 // ============================
+// `images` referencia los PNG ORIGINALES (siguen en su ruta). En el render se
+// sirve la variante .webp (mucho más ligera) via <picture>, con el PNG como
+// fallback presente y referenciado. `video` sirve la versión .opt (ligera);
+// el original tambien queda en la carpeta.
 const PROJECT_MEDIA = {
     "vial_servi": { folder: "vial-servi", images: ["primero.png", "segundo.png", "tercero.png", "cuarto.png"] },
     "Proyecto-Sistema-de-Transtito": { folder: "sistema-transito", images: ["primera.png", "segunda.png", "tercera.png", "cuarta.png", "quinta.png", "sexta.png"] },
     "Pro-Connect": { folder: "proconnect", images: ["primera.png", "segunda.png", "tercera.png", "cuarta.png", "quinta.png"] },
     "Pokemon-API": { folder: "poke-api", images: ["primera.png", "segunda.png", "tercera.png", "cuarta.png", "quinta.png", "sexta.png"] },
     "Poliglota-Red-Social-Postgres-SQL-Neo4j": { folder: "poliglota", images: ["primera.png", "segunda.png", "tercera.png", "cuarta.png"] },
-    "Cubo-PS2-": { folder: "cubo-ps2", video: "Video.mp4" },
+    "Cubo-PS2-": { folder: "cubo-ps2", video: "Video.opt.mp4" },
 };
+
+// Deriva la ruta .webp a partir de un archivo .png/.jpg (misma carpeta/nombre).
+function webpVariant(path) {
+    return path.replace(/\.(png|jpe?g)$/i, ".webp");
+}
 
 function openProjectGallery(repoName) {
     const media = PROJECT_MEDIA[repoName];
@@ -891,6 +918,7 @@ function openProjectGallery(repoName) {
     const iframe = document.getElementById("certModalIframe");
     if (!overlay || !iframe) return;
     const imgs = media.images.map(f => base + encodeURI(f));
+    const imgsWebp = media.images.map(f => base + encodeURI(webpVariant(f)));
     let idx = 0;
 
     function backdropHandler(e) {
@@ -915,7 +943,10 @@ function openProjectGallery(repoName) {
         overlay.querySelector(".modal-content").innerHTML = `
             <button class="modal-close" id="galleryClose">&times;</button>
             <div style="flex:1;display:flex;align-items:center;justify-content:center;padding:20px;position:relative;background:rgba(0,0,0,0.85)">
-                <img src="${imgs[idx]}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px">
+                <picture>
+                    <source srcset="${imgsWebp[idx]}" type="image/webp">
+                    <img src="${imgs[idx]}" style="max-width:100%;max-height:100%;object-fit:contain;border-radius:8px">
+                </picture>
                 <div style="position:absolute;bottom:16px;left:50%;transform:translateX(-50%);font-family:'JetBrains Mono',monospace;font-size:0.8rem;color:var(--text-muted);background:rgba(0,0,0,0.6);padding:4px 12px;border-radius:999px">${idx+1} / ${imgs.length}</div>
                 ${idx > 0 ? '<button class="gallery-nav gallery-prev">&larr;</button>' : ""}
                 ${idx < imgs.length - 1 ? '<button class="gallery-nav gallery-next">&rarr;</button>' : ""}
@@ -942,6 +973,7 @@ function renderProjects(repos) {
     const blockedDemoHosts = new Set([
         "andressanchez12323.github.io",
         "perfil-github-nu.vercel.app",
+        "portafolio-personal-edwin-sanchez.vercel.app",
     ]);
     const items = repos.filter((r) => !r.fork && !EXCLUDED_PROJECTS.includes(r.name))
         .sort((a, b) => b.stargazers_count - a.stargazers_count || new Date(b.updated_at) - new Date(a.updated_at))
@@ -967,7 +999,10 @@ function renderProjects(repos) {
             previewInner = `<video class="project-preview-video" src="${base}${media.video}" autoplay loop muted playsinline></video>`;
         } else if (media && media.images && media.images.length > 0) {
             const firstImg = base + media.images[0];
-            previewInner = `<img class="project-preview-img" src="${firstImg}" alt="${escapeHTML(r.name)}" loading="lazy" data-gallery-repo="${escapeHTML(r.name)}">`;
+            previewInner = `<picture>
+                    <source srcset="${webpVariant(firstImg)}" type="image/webp">
+                    <img class="project-preview-img" src="${firstImg}" alt="${escapeHTML(r.name)}" loading="lazy" decoding="async" data-gallery-repo="${escapeHTML(r.name)}">
+                </picture>`;
             if (media.images.length > 1) {
                 const n = media.images.length;
                 previewInner += `<button class="project-preview-btn" type="button" data-gallery-repo="${escapeHTML(r.name)}">${n < 10 ? "0" : ""}${n} <svg width="10" height="10" viewBox="0 0 10 10" fill="currentColor"><path d="M1 1h3v3H1zm5 0h3v3H6zM1 6h3v3H1zm5 0h3v3H6z"/></svg></button>`;

@@ -15,6 +15,9 @@ nul
 # Directorios vacíos
 plans/
 
+# Respaldos de assets originales sin optimizar (no se despliegan)
+assets/_originals/
+
 # Entorno
 .env
 .env.local
