@@ -28,6 +28,8 @@ const TRANSLATIONS = {
         nav_skills: "Skills",
         nav_github: "GitHub",
         nav_certificates: "Certificados",
+        bg_hide: "Ocultar fondo de video",
+        bg_show: "Mostrar fondo de video",
         nav_contact: "Contacto",
         hero_subtitle: "enfocado en productos limpios y performantes. Creo soluciones eficientes con c\u00f3digo de calidad.",
         hero_btn_projects: "Ver Proyectos",
@@ -102,6 +104,8 @@ const TRANSLATIONS = {
         nav_skills: "Skills",
         nav_github: "GitHub",
         nav_certificates: "Certificates",
+        bg_hide: "Hide video background",
+        bg_show: "Show video background",
         nav_contact: "Contact",
         hero_subtitle: "focused on clean, performant products. I create efficient solutions with quality code.",
         hero_btn_projects: "View Projects",
@@ -227,6 +231,7 @@ function setLanguage(lang) {
     const btn = document.getElementById("langToggle");
     if (btn) btn.textContent = lang === "es" ? "EN" : "ES";
     applyTranslations();
+    updateBgButton(bgVideoOn);
     initRoleRotator();
     renderExperience();
     renderCertificates();
@@ -242,29 +247,76 @@ function initPerformanceMode() {
     document.body.classList.toggle("performance-lite", shouldUseLiteMode);
 }
 
-function initBackgroundVideo() {
+// Estado del fondo de video controlado por el usuario.
+// Preferencia guardada: "on" | "off" | (sin valor => decisión automática:
+// se activa salvo en modo lite/móvil, para no gastar datos por defecto).
+let bgVideoOn = false;
+
+function bgVideoWanted() {
+    const pref = localStorage.getItem("bgVideo");
+    if (pref === "on") return true;
+    if (pref === "off") return false;
+    return !shouldUseLiteMode;
+}
+
+function updateBgButton(on) {
+    const btn = document.getElementById("bgToggle");
+    if (!btn) return;
+    btn.classList.toggle("off", !on);
+    btn.setAttribute("aria-pressed", String(on));
+    const label = on ? t("bg_hide") : t("bg_show");
+    btn.title = label;
+    btn.setAttribute("aria-label", label);
+}
+
+function applyBgVideo(on) {
+    bgVideoOn = on;
+    document.body.classList.toggle("bg-video-on", on);
+    document.body.classList.toggle("bg-video-off", !on);
     const video = document.getElementById("bg-video");
-    if (!video || shouldUseLiteMode) return;
+    if (video) {
+        if (on) {
+            if (video.dataset.src && !video.querySelector("source")) {
+                const source = document.createElement("source");
+                source.src = video.dataset.src;
+                source.type = "video/webm";
+                video.appendChild(source);
+                video.load();
+            }
+            video.play().catch(() => {});
+        } else {
+            try { video.pause(); } catch {}
+        }
+    }
+    updateBgButton(on);
+}
 
-    const src = video.dataset.src;
-    if (!src) return;
-
-    const loadVideo = () => {
-        if (video.querySelector("source")) return;
-        const source = document.createElement("source");
-        source.src = src;
-        source.type = "video/webm";
-        video.appendChild(source);
-        video.load();
-        video.play().catch(() => {
-            video.remove();
+function initBackgroundVideo() {
+    const btn = document.getElementById("bgToggle");
+    if (btn) {
+        btn.addEventListener("click", () => {
+            const next = !bgVideoOn;
+            localStorage.setItem("bgVideo", next ? "on" : "off");
+            applyBgVideo(next);
         });
-    };
+    }
 
-    if ("requestIdleCallback" in window) {
-        window.requestIdleCallback(loadVideo, { timeout: 1800 });
+    if (bgVideoWanted()) {
+        // Reflejar el estado "on" de inmediato; diferir solo la carga del video
+        // para no bloquear el arranque. Revalida por si el usuario lo desactiva
+        // antes de que termine la carga diferida.
+        bgVideoOn = true;
+        document.body.classList.add("bg-video-on");
+        document.body.classList.remove("bg-video-off");
+        updateBgButton(true);
+        const load = () => { if (bgVideoWanted()) applyBgVideo(true); };
+        if ("requestIdleCallback" in window) {
+            window.requestIdleCallback(load, { timeout: 1800 });
+        } else {
+            window.setTimeout(load, 1200);
+        }
     } else {
-        window.setTimeout(loadVideo, 1200);
+        applyBgVideo(false);
     }
 }
 

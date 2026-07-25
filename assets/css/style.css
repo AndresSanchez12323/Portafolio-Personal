@@ -204,6 +204,15 @@ body.performance-lite #bg-video {
     opacity: 0.3;
 }
 
+/* Elección explícita del usuario mediante el botón del menú.
+   Prevalece sobre el modo lite y sobre prefers-reduced-motion. */
+body.bg-video-on #bg-video {
+    display: block !important;
+}
+body.bg-video-off #bg-video {
+    display: none !important;
+}
+
 /* ============================
    Background Overlay
    ============================ */
@@ -370,6 +379,29 @@ button:focus-visible,
 .nav-toggle-btn.theme-btn {
     font-size: 0.9rem;
     padding: 3px 8px;
+}
+
+.nav-toggle-btn.bg-btn {
+    font-size: 0.9rem;
+    padding: 3px 8px;
+    position: relative;
+}
+
+.nav-toggle-btn.bg-btn.off {
+    opacity: 0.55;
+}
+
+.nav-toggle-btn.bg-btn.off::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 132%;
+    height: 2px;
+    background: currentColor;
+    border-radius: 2px;
+    transform: translate(-50%, -50%) rotate(-45deg);
+    pointer-events: none;
 }
 
 .nav-toggle {
