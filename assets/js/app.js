@@ -466,7 +466,14 @@ function initCertModal() {
 // ============================
 // GitHub API
 // ============================
-const EXCLUDED_PROJECTS = ["AyP-III--Proyectos", "Practicas-Fundamentos-Programacion"];
+// Repos que no se muestran como proyectos ni en "En lo que estoy trabajando":
+// prácticas académicas y los repos "meta" (el propio portafolio y el de perfil).
+const EXCLUDED_PROJECTS = [
+    "AyP-III--Proyectos",
+    "Practicas-Fundamentos-Programacion",
+    "Portafolio-Personal",
+    "AndresSanchez12323",
+];
 
 async function renderGitHub() {
     const username = "AndresSanchez12323";
@@ -477,8 +484,8 @@ async function renderGitHub() {
     try {
         if (!cachedProfile || !cachedRepos) {
             const [profileRes, reposRes] = await Promise.all([
-                fetch(`https://api.github.com/users/${username}`),
-                fetch(`https://api.github.com/users/${username}/repos?per_page=100&sort=pushed`),
+                fetch(`https://api.github.com/users/${username}`, { cache: "no-store" }),
+                fetch(`https://api.github.com/users/${username}/repos?per_page=100&sort=pushed`, { cache: "no-store" }),
             ]);
             if (!profileRes.ok || !reposRes.ok) throw new Error("GitHub API error");
             cachedProfile = await profileRes.json();
