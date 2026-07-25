@@ -382,26 +382,26 @@ button:focus-visible,
 }
 
 .nav-toggle-btn.bg-btn {
-    font-size: 0.9rem;
-    padding: 3px 8px;
-    position: relative;
+    padding: 4px 8px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
-.nav-toggle-btn.bg-btn.off {
-    opacity: 0.55;
+.bg-btn-icon {
+    width: 16px;
+    height: 16px;
+    display: block;
 }
 
-.nav-toggle-btn.bg-btn.off::after {
-    content: "";
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 132%;
-    height: 2px;
-    background: currentColor;
-    border-radius: 2px;
-    transform: translate(-50%, -50%) rotate(-45deg);
-    pointer-events: none;
+/* La barra diagonal del estado "desactivado" vive dentro del viewBox del
+   SVG, por lo que nunca desborda los limites del boton. */
+.bg-btn-slash {
+    display: none;
+}
+
+.nav-toggle-btn.bg-btn.off .bg-btn-slash {
+    display: inline;
 }
 
 .nav-toggle {
